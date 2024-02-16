@@ -1,0 +1,6 @@
+[submodule "third-party/executorch"]
+	path = executorch
+	url = git@github.com:pytorch/executorch.git
+[submodule "executorch"]
+	path = executorch
+	url = git@github.com:pytorch/executorch.git

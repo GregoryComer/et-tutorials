@@ -41,7 +41,9 @@ option(EXECUTORCH_BUILD_EXTENSION_MODULE "" ON)
 option(EXECUTORCH_BUILD_XNNPACK "" ON)
 
 # Include the executorch subdirectory.
-add_subdirectory(${PROJECT_SOURCE_DIR}/../executorch ${CMAKE_BINARY_DIR}/executorch)
+add_subdirectory(
+    ${PROJECT_SOURCE_DIR}/../executorch
+    ${CMAKE_BINARY_DIR}/executorch)
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
 

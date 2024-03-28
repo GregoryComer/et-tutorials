@@ -41,3 +41,13 @@ Install executorch requirements:
 See the README.md files in each tutorial directory for more instructions:
 
 * [Run a simple model](01-run-simple-model/README.md)
+
+## Build environment with xnnpack + pybinding
+
+Execute this under executorch root directory after building:
+```
+CMAKE_ARGS="-DEXECUTORCH_BUILD_XNNPACK=ON "  \
+CMAKE_BUILD_PARALLEL_LEVEL=9 \
+EXECUTORCH_BUILD_PYBIND=ON \
+pip install . --no-build-isolation -v
+```

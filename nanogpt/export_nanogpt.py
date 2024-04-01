@@ -29,12 +29,13 @@ def main(args):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Prep ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     model = GPT.from_pretrained('gpt2') # use gpt2 weight as pretrained weight
     example_inputs = (torch.randint(0, 100, (1, 1024), dtype=torch.long), )
+    method_name = "forward"
 
     #  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Export  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     # Using a custom SDPA kernel for LLMs
     with torch.nn.attention.sdpa_kernel([SDPBackend.MATH]), torch.no_grad():
-        m = capture_pre_autograd_graph(model, example_inputs)
+        m = capture_pre_autograd_graph(getattr(model, method_name), example_inputs)
 
         if args.backend == "XnnPack":
             edge_config = get_xnnpack_edge_compile_config()
@@ -60,7 +61,7 @@ def main(args):
         res = check_executorch_output_consistency(
             flatbuffer_buff=et_program.buffer,
             model=model,
-            method_name="forward",
+            method_name=method_name,
             example_inputs=example_inputs,
             load_fn=_load_for_executorch_from_buffer,
             error_limits=error_limits,

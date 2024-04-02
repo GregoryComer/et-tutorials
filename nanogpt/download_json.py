@@ -9,5 +9,5 @@ data = json.loads(response.text)
 # Specify the local path where you want to store the JSON file
 file_path = 'local_vocab.json'
 # Write the JSON data to a file in the specified path
-with open(file_path, 'w') as file:
-    json.dump(data, file)
+with open(file_path, 'w', encoding='utf-8') as file:
+    json.dump(data, file, indent=4)

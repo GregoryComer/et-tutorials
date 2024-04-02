@@ -4,57 +4,54 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+# ### One-time setup ###
 #
-# Simple CMake build system for nano-gpt demo.
+# Configure the CMake build system. It's good practice to do this whenever
+# cloning or pulling the upstream repo. Once this is done, you don't need to do
+# it again until you pull from the upstream repo again.
 #
-# ### Editing this file ###
+# NOTE: If your `buck2` binary is not on the PATH, you can change this line to
+# say something like `-DBUCK2=/tmp/buck2` to point directly to the tool.
+#[[
+  (rm -rf cmake-out \
+    && mkdir cmake-out \
+    && cd cmake-out \
+    && cmake -DBUCK2=buck2 ..)
+]]
 #
-# This file should be formatted with
+# ### Build ###
+#
+# NOTE: The `-j` argument specifies how many jobs/processes to use when
+# building, and tends to speed up the build significantly. It's typical to use
+# "core count + 1" as the `-j` value.
 # ~~~
-# cmake-format --first-comment-is-literal=True CMakeLists.txt
+# cmake --build cmake-out --target nanogpt_runner -j9
 # ~~~
-# It should also be cmake-lint clean.
-#
 
 cmake_minimum_required(VERSION 3.19)
-project(llama_runner)
+project(nanogpt_runner)
 
-if(NOT PYTHON_EXECUTABLE)
-  set(PYTHON_EXECUTABLE python3)
-endif()
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 
-if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 17)
-  # Can't set to 11 due to executor_runner.cpp make_unique
-endif()
+# Set options for executorch build.
+option(EXECUTORCH_BUILD_EXTENSION_DATA_LOADER "" ON)
+option(EXECUTORCH_BUILD_EXTENSION_MODULE "" ON)
+option(EXECUTORCH_BUILD_XNNPACK "" ON)
 
-if(NOT EXECUTORCH_ROOT)
-  set(EXECUTORCH_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../executorch)
-endif()
+# Include the executorch subdirectory.
+add_subdirectory(
+    ${PROJECT_SOURCE_DIR}/../executorch
+    ${CMAKE_BINARY_DIR}/executorch)
 
-message(STATUS "EXECUTORCH_ROOT: ${EXECUTORCH_ROOT}")
-message(STATUS "======================")
+# include_directories(${PROJECT_SOURCE_DIR}/src)
 
-set(TORCH_ROOT ${EXECUTORCH_ROOT}/third-party/pytorch)
-
-include(${EXECUTORCH_ROOT}/build/Utils.cmake)
-include(${EXECUTORCH_ROOT}/build/Codegen.cmake)
-
-#
-# The `_<target>_srcs` lists are defined by including ${EXECUTORCH_SRCS_FILE}.
-#
-set(EXECUTORCH_SRCS_FILE
-    "${EXECUTORCH_ROOT}/executorch_srcs.cmake")
-
-message(STATUS "EXECUTORCH_ROOT: ${EXECUTORCH_SRCS_FILE}")
-message(STATUS "======================")
-
-extract_sources(${EXECUTORCH_SRCS_FILE})
-
-include(${EXECUTORCH_SRCS_FILE})
-
-# build llama_runner library
-list(TRANSFORM _llama_runner__srcs PREPEND "${EXECUTORCH_ROOT}/")
-
-target_include_directories(NanoGPT PRIVATE ${EXECUTORCH_SRCS_FILE})
+add_executable(nanogpt_runner nanogpt_runner.cpp)
+target_link_libraries(
+    nanogpt_runner
+    PRIVATE
+    executorch
+    extension_data_loader
+    extension_module
+    portable_ops_lib)

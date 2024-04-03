@@ -67,10 +67,10 @@ Result<vector<int64_t>> generate(std::unique_ptr<Module>& llm_model, Sampler sam
 
     ManagedTensor tensor_tokens(
       tokens.data(),
-      {1, 1024},
+      {1, 3},
       ScalarType::Long);
 
-    tensor_tokens.resize({1, 1});
+    // tensor_tokens.resize({1, 1});
 
     cout << "111111111111" << endl;
 
@@ -82,15 +82,21 @@ Result<vector<int64_t>> generate(std::unique_ptr<Module>& llm_model, Sampler sam
 
     Result<std::vector<EValue>> output_res = llm_model->forward(inputs);
 
+    cout << "222222222222" << endl;
+    cout << output_res.get().size() << endl;
+
     Tensor output_tensor = output_res.get()[0].toTensor();
 
     vector<int64_t> output_data(output_tensor.data_ptr<int64_t>(), output_tensor.data_ptr<int64_t>() + output_tensor.numel());
 
-    for (auto od: output_data) {
-        cout << od << " ";
-    }
+    cout << "333333333333" << endl;
+    cout << output_tensor.numel() << endl;
 
-    cout << endl;
+    // for (auto od: output_data) {
+    //     cout << od << ", ";
+    // }
+
+    // cout << endl;
 
     // Return the logits tensor
     return output_data;
@@ -99,7 +105,7 @@ Result<vector<int64_t>> generate(std::unique_ptr<Module>& llm_model, Sampler sam
 
 int main() {
     // 1. get input
-    string prompt = "hello";
+    string prompt = "I";
 
     // 2. load tokenizer, model and sampler.
     BasicTokenizer tokenizer("local_vocab.json");
@@ -110,7 +116,8 @@ int main() {
     Sampler sampler = Sampler(/*vocab_size=*/maxSeqLen);
 
     // 3. tokenize the input
-    vector<int64_t> tokens = tokenizer.encode(prompt);
+    // vector<int64_t> tokens = tokenizer.encode(prompt);
+    vector<int64_t> tokens = {15496, 995, 0};
 
     // 4. generate outputs
     Result<vector<int64_t>> outputs = generate(llm_model, sampler, tokens, /*max_length=*/10);

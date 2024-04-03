@@ -20,7 +20,6 @@ from executorch.backends.xnnpack.utils.configs import get_xnnpack_edge_compile_c
 from test_utils import check_executorch_output_consistency, ErrorLimits
 from typing import Optional
 
-<<<<<<< HEAD
 from executorch.extension.pybindings.portable_lib import (
     _load_for_executorch_from_buffer,
 )
@@ -31,40 +30,25 @@ class NanoGPT(nn.Module):
         super().__init__()
         self.model = GPT.from_pretrained('gpt2') # use gpt2 weight as pretrained weight
 
-    def forward(self, input_ids: torch.Tensor):
-        return self.model.generate(input_ids, 20)
-=======
-# from executorch.extension.pybindings.portable_lib import (
-#     _load_for_executorch_from_buffer,
-# )
+    def forward(self, idx, max_new_tokens):
+        for _ in range(20):
+            # if the sequence context is growing too long we must crop it at block_size
+            idx_cond = idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size:]
+            # forward the model to get the logits for the index in the sequence
+            logits, _ = self.model()(idx_cond)
+            # choose the highest probability token as the next index to continue the sequence with
+            idx_next = torch.argmax(logits).view(1, 1)
+            # append sampled index to the running sequence and continue
+            idx = torch.cat((idx, idx_next), dim=1)
 
-
-class NanoGPT(GPT):
-    def __init__(self, config: GPTConfig):
-        super().__init__(config)
-
-    def forward(self, input_ids: torch.Tensor):
-        return self.generate(input_ids, 20)
->>>>>>> 48bdf5fe81082634a5235413f3e19c89c9f3bd48
+        return idx
 
 
 def main(args):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Prep ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-<<<<<<< HEAD
     model = NanoGPT()
     example_inputs = (torch.randint(0, 100, (1, 3), dtype=torch.long), )
 
-    example_outputs = model(*example_inputs)
-    print("~~~~~~~~~~~~~~~~~~~~~~")
-    print(type(example_outputs))
-    print(len(example_outputs))
-    print("~~~~~~~~~~~~~~~~~~~~~~")
-
-=======
-    model = NanoGPT.from_pretrained('gpt2') # use gpt2 weight as pretrained weight
-    example_inputs = (torch.randint(0, 100, (1, 1024), dtype=torch.long), )
-
->>>>>>> 48bdf5fe81082634a5235413f3e19c89c9f3bd48
     #  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Export  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     # Using a custom SDPA kernel for LLMs
@@ -90,7 +74,6 @@ def main(args):
         print("Creating ExecuTorch program...")
         et_program: ExecutorchProgramManager = edge_manager.to_executorch()
 
-<<<<<<< HEAD
         print("Checking the outputs of the ExecuTorch program...")
         error_limits = ErrorLimits(atol=args.atol, rtol=args.rtol)
         res = check_executorch_output_consistency(
@@ -106,23 +89,6 @@ def main(args):
         else:
             print("Outputs are different!")
             print("Reasons: {}".format("\n ".join(res.reasons)))
-=======
-        # print("Checking the outputs of the ExecuTorch program...")
-        # error_limits = ErrorLimits(atol=args.atol, rtol=args.rtol)
-        # res = check_executorch_output_consistency(
-        #     flatbuffer_buff=et_program.buffer,
-        #     model=model,
-        #     method_name=method_name,
-        #     example_inputs=example_inputs,
-        #     load_fn=_load_for_executorch_from_buffer,
-        #     error_limits=error_limits,
-        # )
-        # if res.is_same:
-        #     print("Outputs are the same!")
-        # else:
-        #     print("Outputs are different!")
-        #     print("Reasons: {}".format("\n ".join(res.reasons)))
->>>>>>> 48bdf5fe81082634a5235413f3e19c89c9f3bd48
 
     # Write the serialized ExecuTorch program to a file.
     with open(args.output_file, "wb") as file:

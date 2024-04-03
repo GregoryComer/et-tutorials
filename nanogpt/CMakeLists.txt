@@ -39,6 +39,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 option(EXECUTORCH_BUILD_EXTENSION_DATA_LOADER "" ON)
 option(EXECUTORCH_BUILD_EXTENSION_MODULE "" ON)
 option(EXECUTORCH_BUILD_XNNPACK "" ON)
+option(EXECUTORCH_BUILD_SDK "" ON) # Needed for etdump
 
 # Include the executorch subdirectory.
 add_subdirectory(
@@ -51,8 +52,6 @@ add_executable(nanogpt_runner nanogpt_runner.cpp)
 target_link_libraries(
     nanogpt_runner
     PRIVATE
-    executorch
     etdump
-    extension_data_loader
     extension_module
     portable_ops_lib)

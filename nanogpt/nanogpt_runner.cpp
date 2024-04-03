@@ -49,8 +49,7 @@ int main() {
           Module::MlockConfig::UseMlockIgnoreErrors);
 
     // 3. tokenize the input
-    // vector<int64_t> tokens = tokenizer.encode(prompt);
-    vector<int64_t> tokens = {15496, 995, 0};
+    vector<int64_t> tokens = tokenizer.encode(prompt);
 
     // 4. generate outputs
     Result<vector<int64_t>> outputs = generate(llm_model, tokens);

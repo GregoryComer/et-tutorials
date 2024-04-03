@@ -11,6 +11,8 @@
 #include <executorch/runtime/core/exec_aten/exec_aten.h>
 #include <executorch/runtime/core/exec_aten/util/dim_order_util.h>
 #include <executorch/runtime/core/exec_aten/util/tensor_util.h>
+#include <executorch/sdk/etdump/etdump_flatcc.h>
+
 
 using namespace std;
 using namespace torch::executor;
@@ -44,15 +46,35 @@ int main() {
     // 2. load tokenizer, model and sampler.
     BasicTokenizer tokenizer("local_vocab.json");
 
+    std::unique_ptr<torch::executor::ETDumpGen> etdump_gen_ =
+      std::make_unique<torch::executor::ETDumpGen>();
+
     unique_ptr<Module> llm_model = make_unique<Module>(
           /*model_path=*/"nanogpt.pte",
-          Module::MlockConfig::UseMlockIgnoreErrors);
+          Module::MlockConfig::UseMlockIgnoreErrors,
+          std::move(etdump_gen_));
 
     // 3. tokenize the input
     vector<int64_t> tokens = tokenizer.encode(prompt);
 
     // 4. generate outputs
     Result<vector<int64_t>> outputs = generate(llm_model, tokens);
+
+    #ifdef ET_EVENT_TRACER_ENABLED
+    torch::executor::ETDumpGen* etdump_gen =
+        static_cast<torch::executor::ETDumpGen*>(llm_model->event_tracer());
+
+    ET_LOG(Info, "ETDump size: %zu blocks", etdump_gen->get_num_blocks());
+    etdump_result result = etdump_gen->get_etdump_data();
+    if (result.buf != nullptr && result.size > 0) {
+        // On a device with a file system users can just write it out
+        // to the file-system.
+        FILE* f = fopen(etdump_path.c_str(), "w+");
+        fwrite((uint8_t*)result.buf, 1, result.size, f);
+        fclose(f);
+        free(result.buf);
+    }
+    #endif
 
     // 5. decode the outputs
     string out_str = tokenizer.decode(outputs.get());

@@ -52,6 +52,7 @@ target_link_libraries(
     nanogpt_runner
     PRIVATE
     executorch
+    etdump
     extension_data_loader
     extension_module
     portable_ops_lib)

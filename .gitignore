@@ -1,1 +1,6 @@
-cmake-out/
+*cmake-out/
+executorch/
+*.pte
+*vocab.json
+*.DS_Store
+*.pyc

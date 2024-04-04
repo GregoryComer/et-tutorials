@@ -1,53 +1,61 @@
 ## Environment setup
 
-Clone the repo:
+1. Clone the repo:
 ```
 git clone git@github.com:dbort/et-tutorials.git
 cd et-tutorials
+git checkout gasoonjia
 ```
 
-Set up the submodules. Avoid using `--recursive` because we don't need to pull
-in all of the many `pytorch` submodules.
+2. Auto sync executoch repo and switch to main branch
+
 ```
-git submodule sync && git submodule update --init \
-  && (cd executorch && git submodule sync && git submodule update --init)
+git submodule sync && git submodule update --init
+cd executorch
+git checkout origin/main
 ```
 
-Install `buck2` and ensure that it's on your path:
+3. Build ExecuTorch
+
+Please follow the  “Setup Your Environment” step in [ExecuTorch setup page](https://pytorch.org/executorch/main/getting-started-setup.html).
+For the last command, please do
 ```
-TODO
+./install_requirements.sh --pybind
+```
+instead to build ET with pybinding.
+
+## Export nanoGPT
+
+ Move to nanoGPT directory:
+ ```
+ cd /path/to/et-tutorials/nanogpt
+ ```
+
+ Then export the nanoGPT.pte by
+
+ ```
+ python export_nanogpt.py
+ ```
+
+
+## Execute nanoGPT in the runtime
+1. Build runtime Environment
+```
+(rm -rf cmake-out \
+  && mkdir cmake-out \
+  && cd cmake-out \
+  && cmake ..)
+```
+2. Build nanogpt_runner.cpp
+```
+cmake --build cmake-out --target nanogpt_runner -j9
 ```
 
-Install conda and create and activate an environment:
+3. Download vocab json
 ```
-conda create -yn et-tutorials python=3.10.0
-conda activate et-tutorials
+wget https://huggingface.co/openai-community/gpt2/resolve/main/vocab.json
 ```
-
-Install cmake:
+4. Execute the runner by
 ```
-conda install cmake
-```
-
-Install executorch requirements:
-```
-(cd executorch && ./install_requirements.sh)
-```
-
-(TODO: handle flatc)
-
-## Building tutorials
-
-See the README.md files in each tutorial directory for more instructions:
-
-* [Run a simple model](01-run-simple-model/README.md)
-
-## Build environment with xnnpack + pybinding
-
-Execute this under executorch root directory after building:
-```
-CMAKE_ARGS="-DEXECUTORCH_BUILD_XNNPACK=ON "  \
-CMAKE_BUILD_PARALLEL_LEVEL=9 \
-EXECUTORCH_BUILD_PYBIND=ON \
-pip install . --no-build-isolation -v
+./cmake-out/nanogpt_runner
 ```

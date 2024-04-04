@@ -40,39 +40,47 @@ GENERATE_SEQ_LENGTH = 20
 # based on a given tokenized prompt with a single forward pass.
 # Please note that this wrapper is quite resource-intensive due to the inclusion of a for loop for sentence generation.
 # For a more efficient sequence generation, please refer to the implementation in the llama runner.
-class NanoGPT(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.model = GPT.from_pretrained("gpt2")  # use gpt2 weight as pretrained weight
+# class NanoGPT(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#         self.model = GPT.from_pretrained("gpt2")  # use gpt2 weight as pretrained weight
 
-    def forward(self, idx):
-        for _ in range(GENERATE_SEQ_LENGTH):
-            # if the sequence context is growing too long we must crop it at block_size
-            idx_cond = (
-                idx
-                if idx.size(1) <= self.model.config.block_size
-                else idx[:, -self.model.config.block_size :]
-            )
-            # forward the model to get the logits for the index in the sequence
-            logits, _ = self.model(idx_cond)
-            # choose the highest probability token as the next index to continue the sequence with
-            idx_next = torch.argmax(logits).view(1, 1)
-            # append sampled index to the running sequence and continue
-            idx = torch.cat((idx, idx_next), dim=1)
+#     def forward(self, idx):
+#         for _ in range(GENERATE_SEQ_LENGTH):
+#             # if the sequence context is growing too long we must crop it at block_size
+#             idx_cond = (
+#                 idx
+#                 if idx.size(1) <= self.model.config.block_size
+#                 else idx[:, -self.model.config.block_size :]
+#             )
+#             # forward the model to get the logits for the index in the sequence
+#             logits, _ = self.model(idx_cond)
+#             # choose the highest probability token as the next index to continue the sequence with
+#             idx_next = torch.argmax(logits).view(1, 1)
+#             # append sampled index to the running sequence and continue
+#             idx = torch.cat((idx, idx_next), dim=1)
 
-        return idx
+#         return idx
 
 
 def main(args):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Prep ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    model = NanoGPT()
-    example_inputs = (torch.randint(0, 100, (1, 3), dtype=torch.long),)
+    # model = NanoGPT()
+    model = GPT.from_pretrained("gpt2")  # use gpt2 weight as pretrained weight
+    example_inputs = (
+        torch.randint(0, 100, (1, model.config.block_size - 1), dtype=torch.long),
+    )
+    dynamic_shape = (
+        {1: torch.export.Dim("token_dim", max=model.config.block_size - 1)},
+    )
 
     #  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Export  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     # Using a custom SDPA kernel for LLMs
     with torch.nn.attention.sdpa_kernel([SDPBackend.MATH]), torch.no_grad():
-        m = capture_pre_autograd_graph(model, example_inputs)
+        m = capture_pre_autograd_graph(
+            model, example_inputs, dynamic_shapes=dynamic_shape
+        )
 
         if args.backend == "XnnPack":
             edge_config = get_xnnpack_edge_compile_config()
@@ -80,7 +88,7 @@ def main(args):
             edge_config = EdgeCompileConfig(_check_ir_validity=False)
 
         print("Exporting program...")
-        core_aten_ep = export(m, example_inputs)
+        core_aten_ep = export(m, example_inputs, dynamic_shapes=dynamic_shape)
         print("Lowering to edge...")
         edge_manager: EdgeProgramManager = to_edge(
             core_aten_ep,
@@ -93,6 +101,7 @@ def main(args):
         print("Creating ExecuTorch program...")
         et_program: ExecutorchProgramManager = edge_manager.to_executorch()
 
+        example_inputs = (torch.randint(0, 100, (1, 512), dtype=torch.long),)
         if args.verifiy_runtime:
             print("Checking the outputs of the ExecuTorch program...")
             error_limits = ErrorLimits(atol=args.atol, rtol=args.rtol)

@@ -1,3 +1,8 @@
+/*
+The simple runner for nanoGPT. It is for demonstrating how to run the model exported to executorch runtime.
+
+*/
+
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -19,16 +24,17 @@ using SizesType = exec_aten::SizesType;
 using DimOrderType = exec_aten::DimOrderType;
 using StridesType = exec_aten::StridesType;
 
-const int maxSeqLen = 1024;
 
-Result<vector<int64_t>> generate(unique_ptr<Module>& llm_model, vector<int64_t>& tokens) {
+vector<int64_t> generate(Module& llm_model, vector<int64_t>& tokens) {
+    // Convert the input tokens from a vector of int64_t to EValue.
+    // Evalue is a unified data type in the executorch runtime.
     ManagedTensor tensor_tokens(tokens.data(), {1, 3}, ScalarType::Long);
+    vector<EValue> inputs = {tensor_tokens.get_aliasing_tensor()};
 
-    vector<EValue> inputs;
-    inputs.push_back(tensor_tokens.get_aliasing_tensor());
+    // Run the model given the Evalue inputs. The model will also return a sequence of EValues as output.
+    Result<vector<EValue>> output_res = llm_model.forward(inputs);
 
-    Result<vector<EValue>> output_res = llm_model->forward(inputs);
-
+    // Convert the output from EValue to a vector of int64_t.
     Tensor output_tensor = output_res.get()[0].toTensor();
     vector<int64_t> output_data(output_tensor.data_ptr<int64_t>(), output_tensor.data_ptr<int64_t>() + output_tensor.numel());
 
@@ -37,27 +43,28 @@ Result<vector<int64_t>> generate(unique_ptr<Module>& llm_model, vector<int64_t>&
 
 
 int main() {
-    // 1. get input
+    // Load the input. Here we use "Hello world!" as sample input
     string prompt = "Hello world!";
     cout << "prompt: " << prompt << endl;
 
-    // 2. load tokenizer, model and sampler.
-    BasicTokenizer tokenizer("local_vocab.json");
+    // Load tokenizer and model.
+    // The tokenizer is used to tokenize the input and decode the output.
+    // The model is the exported nanoGPT model used to generate the output.
+    BasicTokenizer tokenizer("vocab.json");
+    Module llm_model("nanogpt.pte");
 
-    unique_ptr<Module> llm_model = make_unique<Module>(
-          /*model_path=*/"nanogpt.pte",
-          Module::MlockConfig::UseMlockIgnoreErrors);
-
-    // 3. tokenize the input
+    // Tokenize the input. This means we're converting the input text into a sequence of tokens,
+    // which is a format that our model can understand. Each token represents a word or a part of a word.
     vector<int64_t> tokens = tokenizer.encode(prompt);
 
-    // 4. generate outputs
-    Result<vector<int64_t>> outputs = generate(llm_model, tokens);
+    // Generate outputs. This is where our model is used to process the tokenized input.
+    // The model will return a sequence of tokens as output.
+    vector<int64_t> outputs = generate(llm_model, tokens);
 
-    // 5. decode the outputs
-    string out_str = tokenizer.decode(outputs.get());
+    // Decode the output. This means we're converting the sequence of tokens back into human-readable text.
+    // This is the text that our model generated based on the input.
+    string out_str = tokenizer.decode(outputs);
 
-    // 6. print the outputs
+    // Print the generated text.
     cout << "output: " <<  out_str << endl;
-
 }

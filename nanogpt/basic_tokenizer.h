@@ -9,20 +9,26 @@ class BasicTokenizer {
 public:
     BasicTokenizer(const std::string& filePath) {
         std::ifstream file(filePath);
-        std::string line;
-        int64_t index = 0;
-        while (std::getline(file, line)) {
-            // Skip lines with only a single brace
-            if (line[0] == '{' or line[0] == '}') {
-                continue;
-            }
 
-            size_t split_pos = line.find("\": ");
+        if (!file) {
+            std::cerr << "Unable to open file";
+            exit(9); // return with error code
+        }
+        std::string str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+        // Remove the first and last braces
+        str[0] = ' ';
+        str.pop_back();
+
+        std::stringstream ss(str);
+        std::string kv_pair;
+        while (std::getline(ss, kv_pair, ',')) {
+            size_t split_pos = kv_pair.find("\": ");
             if (split_pos == std::string::npos) {
                 continue;
             }
-            std::string key = line.substr(5, split_pos-5); // 5 here to remove the starting spaces
-            int64_t value = std::stoi(line.substr(split_pos + 3, line.size() - split_pos - 4)); // -4 here to remove the ending comma
+            std::string key = kv_pair.substr(2, split_pos-2); // 5 here to remove the starting spaces
+            int64_t value = std::stoi(kv_pair.substr(split_pos + 3, kv_pair.size() - split_pos - 3)); // -4 here to remove the ending comma
 
             key = post_process_key(key);
 

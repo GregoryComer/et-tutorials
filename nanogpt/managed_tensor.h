@@ -11,11 +11,8 @@
 #include <executorch/runtime/core/exec_aten/util/tensor_util.h>
 #include <executorch/runtime/platform/assert.h>
 
-#ifdef USE_ATEN_LIB
-#include <torch/torch.h>
-#else
 #include <executorch/runtime/core/portable_type/tensor.h>
-#endif
+
 #pragma once
 
 namespace torch {
@@ -40,9 +37,6 @@ class ManagedTensor {
       const std::vector<SizesType>& sizes,
       ScalarType dtype)
       : dtype_(dtype), sizes_(sizes), data_ptr_(data) {
-#ifdef USE_ATEN_LIB
-    tensor_ = torch::from_blob(data, sizes, dtype_);
-#else
     ssize_t dim = sizes.size();
     dim_order_.resize(dim);
     strides_.resize(dim);
@@ -59,7 +53,6 @@ class ManagedTensor {
         dim_order_.data(),
         strides_.data(),
         TensorShapeDynamism::DYNAMIC_BOUND);
-#endif
   }
 
   void resize(const std::vector<SizesType>& new_sizes) {
@@ -76,11 +69,7 @@ class ManagedTensor {
    * Get the underlying Tensor object. This is assuming the copying is cheap.
    */
   Tensor get_aliasing_tensor() {
-#ifdef USE_ATEN_LIB
-    return tensor_;
-#else
     return Tensor(tensor_impl_.get());
-#endif
   }
 
  private:
@@ -90,9 +79,6 @@ class ManagedTensor {
   std::vector<StridesType> strides_;
   std::vector<DimOrderType> dim_order_;
   void* data_ptr_ = nullptr;
-#ifdef USE_ATEN_LIB
-  Tensor tensor_;
-#endif
 };
 } // namespace executor
 } // namespace torch

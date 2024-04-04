@@ -51,7 +51,5 @@ add_executable(nanogpt_runner nanogpt_runner.cpp)
 target_link_libraries(
     nanogpt_runner
     PRIVATE
-    executorch
-    extension_data_loader
     extension_module
     portable_ops_lib)

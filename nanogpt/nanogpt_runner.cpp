@@ -60,7 +60,7 @@ int main() {
     // 4. generate outputs
     Result<vector<int64_t>> outputs = generate(llm_model, tokens);
 
-    #ifdef ET_EVENT_TRACER_ENABLED
+    // Write ETDump to file
     torch::executor::ETDumpGen* etdump_gen =
         static_cast<torch::executor::ETDumpGen*>(llm_model->event_tracer());
 
@@ -69,12 +69,11 @@ int main() {
     if (result.buf != nullptr && result.size > 0) {
         // On a device with a file system users can just write it out
         // to the file-system.
-        FILE* f = fopen(etdump_path.c_str(), "w+");
+        FILE* f = fopen("etdump.etdp", "w+");
         fwrite((uint8_t*)result.buf, 1, result.size, f);
         fclose(f);
         free(result.buf);
     }
-    #endif
 
     // 5. decode the outputs
     string out_str = tokenizer.decode(outputs.get());

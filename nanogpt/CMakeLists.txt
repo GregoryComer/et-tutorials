@@ -55,3 +55,6 @@ target_link_libraries(
     etdump
     extension_module
     portable_ops_lib)
+
+target_compile_options(executorch PUBLIC -DET_EVENT_TRACER_ENABLED)
+target_compile_options(portable_ops_lib PUBLIC -DET_EVENT_TRACER_ENABLED)

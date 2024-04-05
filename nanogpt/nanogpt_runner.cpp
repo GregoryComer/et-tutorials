@@ -65,6 +65,9 @@ int main() {
     // Load tokenizer.
     // The tokenizer is used to tokenize the input and decode the output.
     BasicTokenizer tokenizer("vocab.json");
+
+    // Load sampler.
+    // The sampler is used to sample the next token from the logits.
     BasicSampler sampler = BasicSampler();
 
     // Load exported nanoGPT model, which will be used to generate the output.

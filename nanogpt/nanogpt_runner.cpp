@@ -18,7 +18,6 @@ The simple runner for nanoGPT. It is for demonstrating how to run the model expo
 #include <executorch/runtime/core/exec_aten/util/dim_order_util.h>
 #include <executorch/runtime/core/exec_aten/util/tensor_util.h>
 
-using namespace std;
 using namespace torch::executor;
 
 using SizesType = exec_aten::SizesType;
@@ -26,65 +25,66 @@ using DimOrderType = exec_aten::DimOrderType;
 using StridesType = exec_aten::StridesType;
 
 
-vector<int64_t> generate(Module& llm_model, vector<int64_t>& input_tokens, BasicSampler& sampler, size_t target_output_length) {
-    vector<int64_t> output_tokens;
+std::string generate(
+    Module& llm_model,
+    std::string& prompt,
+    BasicTokenizer& tokenizer,
+    BasicSampler& sampler,
+    size_t max_output_length) {
 
-    for (int i = 0; i < target_output_length; i++) {
+    // Convert the input text into a list of integers (tokens) that represents it, using the string-to-token
+    // mapping that the model was trained on. Each token is an integer that represents a word or part of a word.
+    std::vector<int64_t> input_tokens = tokenizer.encode(prompt);
+    std::vector<int64_t> output_tokens;
+
+    for (auto i = 0u; i < max_output_length; i++) {
         // Convert the input_tokens from a vector of int64_t to EValue.
-        // Evalue is a unified data type in the executorch runtime.
-        ManagedTensor tensor_tokens(input_tokens.data(), {1, 8}, ScalarType::Long);
-        vector<EValue> inputs = {tensor_tokens.get_tensor()};
+        // EValue is a unified data type in the ExecuTorch runtime.
+        ManagedTensor tensor_tokens(input_tokens.data(), {1, static_cast<int>(input_tokens.size())}, ScalarType::Long);
+        std::vector<EValue> inputs = {tensor_tokens.get_tensor()};
 
-        // Run the model given the Evalue inputs. The model will also return a sequence of EValues as output.
-        Result<vector<EValue>> logits_evalue = llm_model.forward(inputs);
+        // Run the model. It will return a tensor of logits (log-probabilities).
+        Result<std::vector<EValue>> logits_evalue = llm_model.forward(inputs);
 
-        // Convert the output from EValue to a logits in float.
+        // Convert the output logits from EValue to std::vector, which is what the sampler expects.
         Tensor logits_tensor = logits_evalue.get()[0].toTensor();
-        vector<float> logits(logits_tensor.data_ptr<float>(), logits_tensor.data_ptr<float>() + logits_tensor.numel());
+        std::vector<float> logits(logits_tensor.data_ptr<float>(), 
+            logits_tensor.data_ptr<float>() + logits_tensor.numel());
 
         // Sample the next token from the logits.
         int64_t next_token = sampler.sample(logits);
-
-        // Record the next token
         output_tokens.push_back(next_token);
+
+        std::cout << tokenizer.decode({ next_token });
+        std::cout.flush();
 
         // Update next input.
         input_tokens.erase(input_tokens.begin());
         input_tokens.push_back(next_token);
     }
 
-    return output_tokens;
+    std::cout << std::endl;
+
+    // Convert the output tokens into a human-readable string.
+    std::string output_string = tokenizer.decode(output_tokens);
+    return output_string;
 }
 
-
 int main() {
-    // Load the input.
-    string prompt = "Hello world, nice to see you!";
-    cout << "prompt: " << prompt << endl;
+    // Set up the prompt. This provides the seed text for the model to elaborate.
+    std::string prompt = "Hello world, nice to see you!";
 
-    // Load tokenizer.
-    // The tokenizer is used to tokenize the input and decode the output.
+    // The tokenizer is used to convert between tokens (used by the model) and
+    // human-readable strings.
     BasicTokenizer tokenizer("vocab.json");
 
-    // Load sampler.
     // The sampler is used to sample the next token from the logits.
     BasicSampler sampler = BasicSampler();
 
-    // Load exported nanoGPT model, which will be used to generate the output.
-    Module llm_model("nanogpt.pte");
+    // Load the exported nanoGPT program, which was generated via the previous steps.
+    Module model("nanogpt.pte", torch::executor::Module::MlockConfig::UseMlockIgnoreErrors);
 
-    // Convert the input text into a list of integers (tokens) that represents it, using the string-to-token
-    // mapping that the model was trained on. Each token is an integer that represents a word or part of a word.
-    vector<int64_t> tokens = tokenizer.encode(prompt);
-
-    // Generate outputs. This is where our model is used to process the tokenized input.
-    // The model will return a sequence of tokens as output.
-    vector<int64_t> outputs = generate(llm_model, tokens, sampler, /*target_output_length*/20);
-
-    // Decode the output. This means we're converting the sequence of tokens back into human-readable text.
-    // This is the text that our model generated based on the input.
-    string out_str = tokenizer.decode(outputs);
-
-    // Print the generated text.
-    cout << "output: " <<  out_str << endl;
+    const auto max_output_tokens = 100;
+    std::cout << prompt;
+    generate(model, prompt, tokenizer, sampler, max_output_tokens);
 }

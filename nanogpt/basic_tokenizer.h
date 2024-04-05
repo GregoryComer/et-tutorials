@@ -16,34 +16,29 @@ public:
         }
         std::string str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 
-        // Remove the first and last braces
-        str[0] = ' ';
-        str.pop_back();
+        size_t i = 0u;
+        i = consume_whitespace(str, i);
+        i = expect(str, i, '{');
 
-        std::stringstream ss(str);
-        std::string kv_pair;
-        while (std::getline(ss, kv_pair, ',')) {
-            size_t split_pos = kv_pair.find("\": ");
-            if (split_pos == std::string::npos) {
-                continue;
-            }
-            std::string key = kv_pair.substr(2, split_pos-2); // 5 here to remove the starting spaces
-            int64_t value = std::stoi(kv_pair.substr(split_pos + 3, kv_pair.size() - split_pos - 3)); // -4 here to remove the ending comma
+        while (i < str.size() && str[i] != '}') {
+            i = consume_field(str, i);
+        }
 
-            key = post_process_key(key);
-
-            encode_[key] = value;
-            decode_[value] = key;
+        // Build decode map as inverse of encode.
+        for (auto& i : encode_) {
+            decode_[i.second] = i.first;
         }
     }
+
     std::vector<int64_t> encode(const std::string& prompt) {
         std::vector<std::string> words = parse_prompt(prompt);
         std::vector<int64_t> result;
-        for (auto word: words) {
+        for (auto word : words) {
             result.push_back(encode_[word]);
         }
         return result;
     }
+
     std::string decode(const std::vector<int64_t>& indices) {
         std::string result;
         for (const auto& index : indices) {
@@ -51,9 +46,82 @@ public:
         }
         return result;
     }
+
 private:
     std::unordered_map<std::string, int64_t> encode_;
     std::unordered_map<int64_t, std::string> decode_;
+
+    // Advance the input string index until a non-whitespace character is found
+    // or it reaches the end of string.
+    size_t consume_whitespace(const std::string& data, size_t i) {
+        while (i < data.size() && std::isspace(data[i])) {
+            i++;
+        }
+
+        return i;
+    }
+
+    // Consumes an JSON field of the form
+    //  "str": id,
+    size_t consume_field(const std::string& data, size_t i) {
+        i = consume_whitespace(data, i);
+
+        // Parse the key literal.
+        i = expect(data, i, '"');
+
+        auto in_escape = false;
+        std::string key = "";
+        while (i < data.size()) {
+            if (in_escape) {
+                key += data[i];
+                i++;
+                in_escape = false;
+            }
+            else { // !in_escape
+                if (data[i] == '"') { // End of string literal
+                    i++;
+                    break;
+                } 
+                else if (data[i] == '\\') { // Escaped code point
+                    in_escape = true;
+                }
+                key += data[i];
+                i++;
+            }
+        }
+
+        key = post_process_key(key);
+
+        i = expect(data, i, ':');
+        i = consume_whitespace(data, i);
+
+        // Read unsigned integer value
+        auto value_start = i;
+        while (i < data.size() && std::isdigit(data[i])) {
+            i++;
+        }
+        auto value = static_cast<int64_t>(std::stol(data.substr(value_start, i - value_start)));
+
+        encode_[key] = value;
+
+        i = consume_whitespace(data, i);
+        if (i < data.size() && data[i] == ',') {
+            i++;
+        }
+
+        return i;
+    }
+
+    // Assert that the next character in the input string is equal to c. Increment
+    // the input string index by one.
+    size_t expect(const std::string& data, size_t i, char c) {
+        if (i >= data.size() || data[i] != c) {
+            std::cerr << "Invalid tokenizer vocabulary file. Expected '" << c << "' at index " << i << std::endl;
+            exit(1);
+        }
+
+        return i + 1;
+    }
 
     std::string post_process_key(std::string key) {
         // Replace the unicode characters with the corresponding byte encoding

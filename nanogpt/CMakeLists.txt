@@ -36,6 +36,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Set options for executorch build.
 option(EXECUTORCH_BUILD_EXTENSION_DATA_LOADER "" ON)
 option(EXECUTORCH_BUILD_EXTENSION_MODULE "" ON)
+option(EXECUTORCH_BUILD_OPTIMIZED "" ON)
 option(EXECUTORCH_BUILD_XNNPACK "" ON)
 
 # Include the executorch subdirectory.
@@ -49,5 +50,7 @@ add_executable(nanogpt_runner nanogpt_runner.cpp)
 target_link_libraries(
     nanogpt_runner
     PRIVATE
-    extension_module
-    portable_ops_lib)
+    executorch
+    extension_module_static
+    optimized_native_cpu_ops_lib 
+    xnnpack_backend)

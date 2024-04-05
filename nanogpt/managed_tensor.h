@@ -55,30 +55,20 @@ class ManagedTensor {
         TensorShapeDynamism::DYNAMIC_BOUND);
   }
 
-  void resize(const std::vector<SizesType>& new_sizes) {
-    ET_CHECK_MSG(
-        new_sizes.size() == sizes_.size(),
-        "Cannot change rank of a managed tensor");
-    auto err = resize_tensor(
-        this->get_aliasing_tensor(),
-        exec_aten::ArrayRef<SizesType>(new_sizes.data(), new_sizes.size()));
-    ET_CHECK(err == Error::Ok);
-  }
-
   /**
-   * Get the underlying Tensor object. This is assuming the copying is cheap.
+   * Get the Tensor object managed by this class.
    */
-  Tensor get_aliasing_tensor() {
+  Tensor get_tensor() {
     return Tensor(tensor_impl_.get());
   }
 
  private:
-  ScalarType dtype_;
+  void* data_ptr_ = nullptr;
   std::unique_ptr<TensorImpl> tensor_impl_;
   std::vector<SizesType> sizes_;
   std::vector<StridesType> strides_;
   std::vector<DimOrderType> dim_order_;
-  void* data_ptr_ = nullptr;
+  ScalarType dtype_;
 };
 } // namespace executor
 } // namespace torch

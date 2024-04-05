@@ -10,13 +10,11 @@
 # cloning or pulling the upstream repo. Once this is done, you don't need to do
 # it again until you pull from the upstream repo again.
 #
-# NOTE: If your `buck2` binary is not on the PATH, you can change this line to
-# say something like `-DBUCK2=/tmp/buck2` to point directly to the tool.
 #[[
   (rm -rf cmake-out \
     && mkdir cmake-out \
     && cd cmake-out \
-    && cmake -DBUCK2=buck2 ..)
+    && cmake ..)
 ]]
 #
 # ### Build ###
@@ -42,10 +40,10 @@ option(EXECUTORCH_BUILD_XNNPACK "" ON)
 
 # Include the executorch subdirectory.
 add_subdirectory(
-    ${PROJECT_SOURCE_DIR}/../executorch
+    ${CMAKE_CURRENT_SOURCE_DIR}/../executorch
     ${CMAKE_BINARY_DIR}/executorch)
 
-# include_directories(${PROJECT_SOURCE_DIR}/src)
+# include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 add_executable(nanogpt_runner nanogpt_runner.cpp)
 target_link_libraries(

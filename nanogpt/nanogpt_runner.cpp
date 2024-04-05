@@ -29,7 +29,7 @@ vector<int64_t> generate(Module& llm_model, vector<int64_t>& tokens) {
     // Convert the input tokens from a vector of int64_t to EValue.
     // Evalue is a unified data type in the executorch runtime.
     ManagedTensor tensor_tokens(tokens.data(), {1, 3}, ScalarType::Long);
-    vector<EValue> inputs = {tensor_tokens.get_aliasing_tensor()};
+    vector<EValue> inputs = {tensor_tokens.get_tensor()};
 
     // Run the model given the Evalue inputs. The model will also return a sequence of EValues as output.
     Result<vector<EValue>> output_res = llm_model.forward(inputs);
@@ -43,18 +43,19 @@ vector<int64_t> generate(Module& llm_model, vector<int64_t>& tokens) {
 
 
 int main() {
-    // Load the input. Here we use "Hello world!" as sample input
+    // Load the input.
     string prompt = "Hello world!";
     cout << "prompt: " << prompt << endl;
 
-    // Load tokenizer and model.
+    // Load tokenizer.
     // The tokenizer is used to tokenize the input and decode the output.
-    // The model is the exported nanoGPT model used to generate the output.
     BasicTokenizer tokenizer("vocab.json");
+
+    // Load exported nanoGPT model, which will be used to generate the output.
     Module llm_model("nanogpt.pte");
 
-    // Tokenize the input. This means we're converting the input text into a sequence of tokens,
-    // which is a format that our model can understand. Each token represents a word or a part of a word.
+    // Convert the input text into a list of integers (tokens) that represents it, using the string-to-token
+    // mapping that the model was trained on. Each token is an integer that represents a word or part of a word.
     vector<int64_t> tokens = tokenizer.encode(prompt);
 
     // Generate outputs. This is where our model is used to process the tokenized input.

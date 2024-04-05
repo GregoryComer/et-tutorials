@@ -29,11 +29,6 @@ from torch.export import export
 
 from torch.nn.attention import SDPBackend
 
-# This variable sets the number of tokens to generate.
-# It aims to balance between generating a sentence with sufficient information and maintaining reasonable computation time.
-# In this case, we've set it to generate 20 tokens.
-GENERATE_SEQ_LENGTH = 20
-
 
 def main(args):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Prep ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

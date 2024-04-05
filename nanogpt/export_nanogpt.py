@@ -35,38 +35,10 @@ from torch.nn.attention import SDPBackend
 GENERATE_SEQ_LENGTH = 20
 
 
-# This is a wrapper class for the NanoGPT model, designed for demonstration purposes.
-# It includes a custom forward function that generates a sentence of a specified length
-# based on a given tokenized prompt with a single forward pass.
-# Please note that this wrapper is quite resource-intensive due to the inclusion of a for loop for sentence generation.
-# For a more efficient sequence generation, please refer to the implementation in the llama runner.
-class NanoGPT(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.model = GPT.from_pretrained("gpt2")  # use gpt2 weight as pretrained weight
-
-    def forward(self, idx):
-        for _ in range(GENERATE_SEQ_LENGTH):
-            # if the sequence context is growing too long we must crop it at block_size
-            idx_cond = (
-                idx
-                if idx.size(1) <= self.model.config.block_size
-                else idx[:, -self.model.config.block_size :]
-            )
-            # forward the model to get the logits for the index in the sequence
-            logits, _ = self.model(idx_cond)
-            # choose the highest probability token as the next index to continue the sequence with
-            idx_next = torch.argmax(logits).view(1, 1)
-            # append sampled index to the running sequence and continue
-            idx = torch.cat((idx, idx_next), dim=1)
-
-        return idx
-
-
 def main(args):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Prep ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    model = NanoGPT()
-    example_inputs = (torch.randint(0, 100, (1, 3), dtype=torch.long),)
+    model = GPT.from_pretrained("gpt2")
+    example_inputs = (torch.randint(0, 100, (1, 8), dtype=torch.long),)
 
     #  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Export  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
